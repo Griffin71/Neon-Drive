@@ -1,0 +1,42 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Game saves - hide all contents but keep the folder
+saves/*
+!saves/.gitkeep
+
+# Assets 
+# assets/images/
+# assets/sounds/
+# assets/fonts/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Track specific file types with Git LFS
+git lfs track "*.psd"
+git lfs track "*.png"
+git lfs track "*.jpg"
+git lfs track "*.mp3"
+git lfs track "*.wav"
+git lfs track "*.fbx"
+git lfs track "*.blend"
+
+# This creates/updates .gitattributes
+git add .gitattributes
