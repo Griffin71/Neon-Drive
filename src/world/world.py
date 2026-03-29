@@ -7,6 +7,8 @@ class World:
         self.buildings = []
         self.roads = []
         self.lakes = []
+        self.street_lights = []
+        self.pois = {}  # Points of interest (police station, etc)
         self.water_boundary = None
         self.land_area = None
         
@@ -15,6 +17,8 @@ class World:
         self.generate_lakes()
         self.generate_roads()
         self.generate_buildings()
+        self.generate_street_lights()
+        self.generate_pois()
         
     def generate_water_boundary(self):
         """Create water surrounding the map like GTA"""
@@ -146,6 +150,90 @@ class World:
                     
                 attempts += 1
                 
+    def generate_street_lights(self):
+        """Generate street lights along roads"""
+        # Place lights along major roads
+        for road in self.roads:
+            if road['type'] == 'highway':
+                # Horizontal road
+                if road['rect'].width > road['rect'].height:
+                    x = road['rect'].x
+                    y_center = road['rect'].centery
+                    while x < road['rect'].right:
+                        self.street_lights.append({
+                            'x': x,
+                            'y': y_center - 30,
+                            'type': 'highway'
+                        })
+                        self.street_lights.append({
+                            'x': x,
+                            'y': y_center + 30,
+                            'type': 'highway'
+                        })
+                        x += 150
+                # Vertical road
+                else:
+                    y = road['rect'].y
+                    x_center = road['rect'].centerx
+                    while y < road['rect'].bottom:
+                        self.street_lights.append({
+                            'x': x_center - 30,
+                            'y': y,
+                            'type': 'highway'
+                        })
+                        self.street_lights.append({
+                            'x': x_center + 30,
+                            'y': y,
+                            'type': 'highway'
+                        })
+                        y += 150
+            else:
+                # Street lights
+                if road['rect'].width > road['rect'].height:
+                    x = road['rect'].x
+                    y_center = road['rect'].centery
+                    while x < road['rect'].right:
+                        self.street_lights.append({
+                            'x': x,
+                            'y': y_center - 20,
+                            'type': 'street'
+                        })
+                        self.street_lights.append({
+                            'x': x,
+                            'y': y_center + 20,
+                            'type': 'street'
+                        })
+                        x += 120
+                else:
+                    y = road['rect'].y
+                    x_center = road['rect'].centerx
+                    while y < road['rect'].bottom:
+                        self.street_lights.append({
+                            'x': x_center - 20,
+                            'y': y,
+                            'type': 'street'
+                        })
+                        self.street_lights.append({
+                            'x': x_center + 20,
+                            'y': y,
+                            'type': 'street'
+                        })
+                        y += 120
+                        
+    def generate_pois(self):
+        """Generate police station and other points of interest"""
+        police_loc = config.LOCATIONS.get('police_station', (3500, 3500))
+        
+        # Police station (large building)
+        self.pois['police_station'] = {
+            'x': police_loc[0],
+            'y': police_loc[1],
+            'type': 'police_station',
+            'width': 300,
+            'height': 250,
+            'color': (30, 50, 120),  # Dark blue
+        }
+                
     def is_in_water(self, x, y):
         """Check if position is in water (outside playable area)"""
         return not self.land_area.collidepoint(x, y)
@@ -266,6 +354,56 @@ class World:
                         if wx + window_size < b_rect.right and wy + window_size < b_rect.bottom:
                             pygame.draw.rect(screen, window_color,
                                            (wx, wy, window_size, window_size), 1)
+                            
+        # Draw point of interest (police station, etc)
+        for poi_key, poi in self.pois.items():
+            poi_rect = pygame.Rect(
+                poi['x'] - poi['width']//2 - camera.x,
+                poi['y'] - poi['height']//2 - camera.y,
+                poi['width'],
+                poi['height']
+            )
+            
+            if (-200 < poi_rect.right and poi_rect.left < config.WIDTH + 200 and
+                -200 < poi_rect.bottom and poi_rect.top < config.HEIGHT + 200):
+                
+                # Draw police station
+                if poi['type'] == 'police_station':
+                    pygame.draw.rect(screen, poi['color'], poi_rect)
+                    pygame.draw.rect(screen, (100, 150, 200), poi_rect, 3)
+                    
+                    # Badge/emblem
+                    badge_color = (100, 150, 200)
+                    pygame.draw.circle(screen, badge_color, (int(poi_rect.centerx), int(poi_rect.centery)), 20)
+                    pygame.draw.rect(screen, (200, 200, 200), 
+                                   (poi_rect.centerx - 5, poi_rect.centery - 15, 10, 30), 2)
+                            
+        # Draw street lights
+        is_night = time_system and time_system.is_night()
+        light_color_day = (100, 100, 100)
+        light_color_night = (255, 200, 100)
+        light_glow_color = (255, 255, 150)
+        
+        for light in self.street_lights:
+            light_x = light['x'] - camera.x
+            light_y = light['y'] - camera.y
+            
+            # Only draw if visible
+            if -50 < light_x < config.WIDTH + 50 and -50 < light_y < config.HEIGHT + 50:
+                light_color = light_color_night if is_night else light_color_day
+                pole_color = (40, 40, 40)
+                
+                # Draw pole
+                pygame.draw.line(screen, pole_color, (light_x, light_y + 20), (light_x, light_y - 30), 3)
+                
+                # Draw light bulb
+                pygame.draw.circle(screen, light_color, (int(light_x), int(light_y - 30)), 6)
+                
+                # Draw glow effect at night
+                if is_night:
+                    glow_surface = pygame.Surface((60, 60), pygame.SRCALPHA)
+                    pygame.draw.circle(glow_surface, (255, 200, 100, 40), (30, 30), 30)
+                    screen.blit(glow_surface, (light_x - 30, light_y - 60))
                             
     def draw_water_border(self, screen, camera):
         """Draw water at edges of map"""

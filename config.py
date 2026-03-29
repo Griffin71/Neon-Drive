@@ -300,6 +300,7 @@ LOCATIONS = {
     'hospital': (650, 2450),
     'gang_house': (800, 2000),
     'ammo_store': (2500, 1200),
+    'police_station': (3500, 3500),
 }
 
 # UI/Gameplay

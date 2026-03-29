@@ -9,6 +9,7 @@ from src.entities.enemy import Enemy
 from src.entities.player import Player, set_camera
 from src.world.world import World
 from src.world.time_system import TimeSystem
+from src.world.police import PoliceSystem
 from src.missions.mission_manager import MissionManager
 from src.ui.hud import HUD
 from src.ui.main_menu import MainMenu
@@ -55,6 +56,7 @@ class Game:
         self.player = None
         self.car = None
         self.vehicle_manager = VehicleManager()
+        self.police_system = None
         self.enemies = []
         self.hud = HUD()
 
@@ -81,6 +83,7 @@ class Game:
         self.world = World()
         self.time_system = TimeSystem()
         self.mission_manager = MissionManager()
+        self.police_system = PoliceSystem()
         self.player = Player(x=600, y=600, sound_manager=self.sound_manager)
         self.car = Car('default', x=self.player.x + 60, y=self.player.y)
 
@@ -113,6 +116,43 @@ class Game:
         if save_data:
             self.save_system.load_game(save_data, self)
 
+    # Add this method to your Game class in game.py
+    def apply_save_data(self, save_data):
+        """Apply save data to game state with proper validation"""
+        try:
+            if 'player' in save_data:
+                player_data = save_data['player']
+                self.player.x = player_data.get('x', 600)
+                self.player.y = player_data.get('y', 600)
+                self.player.health = player_data.get('health', 100)
+                self.player.ammo = player_data.get('ammo', self.player.ammo)
+                self.player.weapons = player_data.get('weapons', self.player.weapons)
+                self.player.current_weapon = player_data.get('current_weapon', 0)
+                
+            if 'car' in save_data:
+                car_data = save_data['car']
+                self.car.x = car_data.get('x', self.player.x + 60)
+                self.car.y = car_data.get('y', self.player.y)
+                self.car.speed = car_data.get('speed', 0)
+                self.car.health = car_data.get('health', 100)
+                
+            if 'game_state' in save_data:
+                gs = save_data['game_state']
+                self.money = gs.get('money', 0)
+                self.wanted_level = gs.get('wanted_level', 0)
+                
+            if 'mission' in save_data:
+                mission_data = save_data['mission']
+                self.mission_manager.current_index = mission_data.get('current_index', 0)
+                self.mission_manager.state = mission_data.get('state', 'idle')
+                
+            return True
+        except Exception as e:
+            print(f"Error applying save data: {e}")
+            return False
+
+    def load_game_complete(self):
+        """Complete game loading after applying save data"""
         # Ensure player knows about sound manager for weapon SFX
         if self.player:
             self.player.sound_manager = self.sound_manager
@@ -234,6 +274,11 @@ class Game:
             x = random.randint(200, config.WORLD_SIZE - 200)
             y = random.randint(200, config.WORLD_SIZE - 200)
             self.enemies.append(Enemy(x, y))
+
+    def report_crime(self, crime_value, position):
+        """Report a crime to the police system to increase wanted level."""
+        if self.police_system:
+            self.police_system.add_crime(crime_value, position)
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -419,6 +464,11 @@ class Game:
                 for enemy in self.enemies:
                     enemy.update(dt, (self.player.x, self.player.y) if self.player else (0, 0), building_rects)
 
+            # Update police system
+            if self.police_system and self.player:
+                self.police_system.update(dt, (self.player.x, self.player.y), self.world)
+                self.wanted_level = self.police_system.wanted_level
+
             # Update HUD messages
             if self.hud and hasattr(self.hud, 'update'):
                 self.hud.update(dt)
@@ -443,6 +493,12 @@ class Game:
 
             # Collisions
             self.check_collisions()
+
+            # Police collisions
+            if self.police_system and self.player:
+                collides, unit = self.police_system.check_collisions(self.player.get_rect())
+                if collides:
+                    self.respawn_player(penalty=2000, reason='Arrested by police (-2000)')
 
             # Out of bounds / water = death and respawn
             if self.world and self.player:
@@ -576,6 +632,10 @@ class Game:
             # Draw enemies
             for enemy in self.enemies:
                 enemy.draw(self.screen, self.camera)
+
+            # Draw police system
+            if self.police_system:
+                self.police_system.draw(self.screen, self.camera)
 
             # Draw mission target
             if self.state in ['playing', 'paused'] and self.mission_manager and self.mission_manager.get_current_mission():

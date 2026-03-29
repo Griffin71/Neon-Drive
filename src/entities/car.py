@@ -56,23 +56,43 @@ class Car:
         if keys[pygame.K_w]:
             accel_input = 1
         if keys[pygame.K_s]:
-            accel_input = -0.5
+            accel_input = -0.8  # Stronger braking
         if keys[pygame.K_a]:
             turn_input = 1
         if keys[pygame.K_d]:
             turn_input = -1
             
-        # Apply physics
-        self.speed += accel_input * self.acceleration * dt
-        self.speed = max(-self.max_speed * 0.5, min(self.speed, self.max_speed))
-        self.speed *= math.exp(-self.drag * dt)
+        # Enhanced physics with better feel
+        # Acceleration with weight consideration
+        accel = accel_input * self.acceleration / (1 + self.weight / 1000)
+        self.speed += accel * dt
         
-        # Turning (only when moving)
-        if abs(self.speed) > 10:
-            turn_strength = (abs(self.speed) / self.max_speed) * self.turn_speed
+        # Speed limits
+        max_speed_reverse = -self.max_speed * 0.3
+        self.speed = max(max_speed_reverse, min(self.speed, self.max_speed))
+        
+        # Drag/friction (exponential + linear)
+        drag_factor = math.exp(-self.drag * dt * 0.8)
+        self.speed *= drag_factor
+        
+        # Apply braking friction when no accel input
+        if accel_input == 0 and abs(self.speed) > 5:
+            self.speed *= (1 - 0.15 * dt)  # Natural friction
+            
+        # Turning mechanics (improved)
+        if abs(self.speed) > 5:  # Minimum speed to turn
+            # Speed-dependent turn radius
+            speed_factor = (abs(self.speed) / self.max_speed) * 0.8 + 0.2
+            turn_strength = self.turn_speed * speed_factor
+            
             # Reverse steering when going backwards
             direction = 1 if self.speed > 0 else -1
             self.angle += turn_input * turn_strength * dt * direction
+            
+            # Add slight drift effect at high speeds
+            if abs(self.speed) > self.max_speed * 0.7 and abs(turn_input) > 0:
+                drift_amount = (abs(self.speed) - self.max_speed * 0.7) / (self.max_speed * 0.3)
+                self.angle += turn_input * 20 * drift_amount * dt
             
         # Movement
         rad = math.radians(self.angle)

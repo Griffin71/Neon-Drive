@@ -43,6 +43,11 @@ python main.py
 - **Ammo Shop**: Visit the neon ammo store on the map and press **E** to purchase ammo.
 - **Minimap**: Always visible. Shows safe house, gang house, ammo shop, mission target, and any active waypoint.
 - **Save/Load**: There are **10 save slots**. Save your progress from the pause menu.
+- **Police System**: The police will chase you when you commit crimes. The wanted level increases based on your criminal activity. Higher wanted levels spawn more police units. Avoid police or you'll be arrested and respawned at the hospital with a cash penalty.
+  - **Wanted Levels**: 5-level system from low heat to maximum police presence
+  - **Police Units**: Police vehicles and officers spawn based on your wanted level
+  - **Heat Decay**: Crime heat gradually decreases over time (30+ seconds without crimes)
+  - **Consequences**: Getting caught by police costs you cash and respawns you at the hospital
 
 ---
 
